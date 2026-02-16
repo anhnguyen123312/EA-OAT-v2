@@ -1,0 +1,10 @@
+# Local config
+.omc/
+.claude/
+
+# OS
+.DS_Store
+
+# MT5 compiled files
+*.ex5
+*.ex4
