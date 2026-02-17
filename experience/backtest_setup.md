@@ -4,6 +4,29 @@ MT5 config tricks, .ini gotchas, timing issues.
 
 ## Known Gotchas
 
+### CRITICAL: Config must have valid Login/Server credentials
+
+**Issue discovered:** 2026-02-17 18:27
+**Symptom:** Backtest runs but produces no CSV results, no log entries, terminates silently
+**Root cause:** autobacktest.ini had wrong Login/Server credentials
+
+**ALWAYS verify before backtest:**
+```ini
+[Tester]
+Login=128364028
+Server=Exness-MT5Real7
+```
+
+**NOT:**
+```ini
+Login=515167729
+Server=Exness-MT5Trial7
+```
+
+**Why this matters:** MT5 terminal64.exe requires valid credentials even for backtesting. Without correct login, the Strategy Tester won't start, and the process exits silently with no error messages in logs.
+
+**How to fix:** Use credentials from backup at `config/mt5-backup/common.ini` or run `./scripts/restore_mt5_login.sh`
+
 ### Expert= path in .ini
 - ONLY use EA name: `Expert=MyEA`
 - NEVER use path prefix: `Expert=Experts\MyEA` (causes "not found" error)
