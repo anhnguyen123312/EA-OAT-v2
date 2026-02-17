@@ -49,7 +49,7 @@ echo "[4/5] Compiling..."
 cd "$MT5_BASE"
 
 # Run compiler
-$WINE metaeditor64.exe /compile:"MQL5\\Experts\\${EA_NAME}.mq5" /log 2>&1
+"$WINE" metaeditor64.exe /compile:"MQL5\\Experts\\${EA_NAME}.mq5" /log 2>&1
 
 # Step 5: Check results
 LOG_FILE="$MT5_BASE/MQL5/Experts/${EA_NAME}.log"

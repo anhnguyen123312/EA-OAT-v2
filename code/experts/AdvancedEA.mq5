@@ -45,6 +45,9 @@ input group "═══ FVG ═══"
 input int    inp_FVG_MinPts = 100;        // Min FVG size (points)
 input int    inp_FVG_TTL = 80;            // FVG TTL
 
+input group "═══ Entry Timing ═══"
+input double inp_ZoneTolerance = 0.0005; // Zone tolerance (0.05%)
+
 //+------------------------------------------------------------------+
 //| Enumerations                                                      |
 //+------------------------------------------------------------------+
@@ -287,6 +290,29 @@ bool HasTriggerCandle(int direction, double minBodyATR, int lookback) {
         }
     }
     return false;
+}
+
+//+------------------------------------------------------------------+
+//| Confirmation Candle Detection - PRIORITY 1 FIX                   |
+//+------------------------------------------------------------------+
+bool IsConfirmationCandle(int direction) {
+    double open0 = iOpen(_Symbol, PERIOD_CURRENT, 0);
+    double close0 = iClose(_Symbol, PERIOD_CURRENT, 0);
+    double high0 = iHigh(_Symbol, PERIOD_CURRENT, 0);
+    double low0 = iLow(_Symbol, PERIOD_CURRENT, 0);
+
+    double bodySize = MathAbs(close0 - open0);
+    double totalRange = high0 - low0;
+
+    if(totalRange <= 0) return false;
+
+    if(direction == 1) {  // LONG - need bullish confirmation
+        // Bullish engulfing or strong bullish candle (body >= 60% of range)
+        return (close0 > open0 && bodySize >= 0.6 * totalRange);
+    } else {  // SHORT - need bearish confirmation
+        // Bearish engulfing or strong bearish candle
+        return (close0 < open0 && bodySize >= 0.6 * totalRange);
+    }
 }
 
 //+------------------------------------------------------------------+
@@ -1062,11 +1088,26 @@ private:
         double atr = GetATR(_Symbol, _Period, 14, 0);
 
         if(candidate.direction == 1) {  // LONG
-            // Entry: OB low or current ask
+            // PRIORITY 1 FIX: Check if price is NEAR the OB zone
+            double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+            double obZone = 0;
+
             if(candidate.hasOB && ob_bull.valid) {
-                candidate.entryPrice = ob_bull.priceBottom;
+                obZone = ob_bull.priceBottom;
+                double tolerance = inp_ZoneTolerance * currentPrice;
+
+                // Price must be AT the OB zone (within tolerance)
+                if(MathAbs(currentPrice - obZone) > tolerance) {
+                    // Price not at OB yet - invalidate candidate
+                    candidate.valid = false;
+                    return;
+                }
+
+                // Price is at OB zone - use current price for entry
+                candidate.entryPrice = currentPrice;
             } else {
-                candidate.entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+                // No OB - use current ask
+                candidate.entryPrice = currentPrice;
             }
 
             // SL: below OB or entry - 2 ATR
@@ -1081,10 +1122,26 @@ private:
             candidate.takeProfit = candidate.entryPrice + (2.0 * slDist);
         }
         else {  // SHORT
+            // PRIORITY 1 FIX: Check if price is NEAR the OB zone
+            double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+            double obZone = 0;
+
             if(candidate.hasOB && ob_bear.valid) {
-                candidate.entryPrice = ob_bear.priceTop;
+                obZone = ob_bear.priceTop;
+                double tolerance = inp_ZoneTolerance * currentPrice;
+
+                // Price must be AT the OB zone (within tolerance)
+                if(MathAbs(currentPrice - obZone) > tolerance) {
+                    // Price not at OB yet - invalidate candidate
+                    candidate.valid = false;
+                    return;
+                }
+
+                // Price is at OB zone - use current price for entry
+                candidate.entryPrice = currentPrice;
             } else {
-                candidate.entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+                // No OB - use current bid
+                candidate.entryPrice = currentPrice;
             }
 
             if(candidate.hasOB && ob_bear.valid) {
@@ -1138,6 +1195,12 @@ public:
         double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
 
         double lots = (riskAmount / slDistancePts) * (tickSize / tickValue);
+
+        // PRIORITY 2 FIX: Log all risk calculation values
+        Print("RISK CALC: Balance=", balance, " Risk%=", m_riskPct,
+              " RiskAmt=", riskAmount, " SL_Pts=", slDistancePts,
+              " TickVal=", tickValue, " TickSize=", tickSize,
+              " Lots_Raw=", lots);
 
         // Limits
         double lotMin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
@@ -1330,6 +1393,9 @@ void OnTick() {
     // FIXED: Check for trigger candle before entry
     if(!HasTriggerCandle(candidate.direction, 0.30, 4)) return;
 
+    // PRIORITY 1 FIX: Check for confirmation candle at POI zone
+    if(!IsConfirmationCandle(candidate.direction)) return;
+
     // Check for existing positions
     if(PositionsTotal() > 0) return;  // Only 1 position at a time
 
@@ -1360,6 +1426,16 @@ void OnTick() {
 
     if(success) {
         Print("✅ Trade opened: ", comment, " | Lot: ", lots, " | R:R: ", candidate.riskReward);
+
+        // PRIORITY 2 FIX: Verify SL was actually set
+        if(PositionSelect(_Symbol)) {
+            double actualSL = PositionGetDouble(POSITION_SL);
+            double actualTP = PositionGetDouble(POSITION_TP);
+            Print("SL VERIFY: Requested=", candidate.stopLoss, " Actual=", actualSL,
+                  " | TP Requested=", candidate.takeProfit, " Actual=", actualTP);
+        }
+    } else {
+        Print("❌ Trade FAILED: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
     }
 }
 
@@ -1404,6 +1480,53 @@ double OnTester() {
         FileClose(handle);
 
         Print("✅ CSV exported: ", filename);
+    }
+
+    // PRIORITY 3 FIX: Export individual trade history
+    string tradeFile = "trade_history.csv";
+    int tradeHandle = FileOpen(tradeFile, FILE_WRITE|FILE_CSV|FILE_COMMON, ",");
+    if(tradeHandle != INVALID_HANDLE) {
+        // Header
+        FileWrite(tradeHandle, "Ticket", "Type", "OpenTime", "CloseTime",
+                  "OpenPrice", "ClosePrice", "SL", "TP", "Lots",
+                  "Profit", "Comment");
+
+        // Loop through history
+        HistorySelect(0, TimeCurrent());
+        int totalDeals = HistoryDealsTotal();
+        int exportCount = 0;
+
+        for(int i = 0; i < totalDeals; i++) {
+            ulong ticket = HistoryDealGetTicket(i);
+            if(ticket > 0) {
+                ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(ticket, DEAL_ENTRY);
+                if(entry == DEAL_ENTRY_OUT) {  // Closed trade
+                    long dealType = HistoryDealGetInteger(ticket, DEAL_TYPE);
+                    datetime dealTime = (datetime)HistoryDealGetInteger(ticket, DEAL_TIME);
+                    double dealPrice = HistoryDealGetDouble(ticket, DEAL_PRICE);
+                    double dealVolume = HistoryDealGetDouble(ticket, DEAL_VOLUME);
+                    double dealProfit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
+                    string dealComment = HistoryDealGetString(ticket, DEAL_COMMENT);
+
+                    FileWrite(tradeHandle,
+                        IntegerToString(ticket),
+                        IntegerToString(dealType),
+                        TimeToString(dealTime, TIME_DATE|TIME_MINUTES),
+                        TimeToString(dealTime, TIME_DATE|TIME_MINUTES),
+                        DoubleToString(dealPrice, _Digits),
+                        DoubleToString(dealPrice, _Digits),
+                        "0",  // SL not available in deal history
+                        "0",  // TP not available in deal history
+                        DoubleToString(dealVolume, 2),
+                        DoubleToString(dealProfit, 2),
+                        dealComment
+                    );
+                    exportCount++;
+                }
+            }
+        }
+        FileClose(tradeHandle);
+        Print("✅ Trade history exported: ", tradeFile, " (", exportCount, " trades)");
     }
 
     return winRate;

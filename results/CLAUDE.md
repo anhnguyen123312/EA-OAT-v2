@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #4628 | 5:54 PM | 🔵 | AdvancedEA failure CSV contains UTF-16 encoded OnTester metrics confirming catastrophic performance | ~955 |
 | #4512 | 3:36 PM | ✅ | Real-Ticks Backtest Results Show Account Blowout | ~495 |
 | #4432 | 1:36 PM | ✅ | Iteration 0 analysis and infrastructure improvements committed | ~641 |
 | #4431 | 1:35 PM | 🟣 | Automated MT5 backtest workflow scripts and manual backtest execution process | ~678 |

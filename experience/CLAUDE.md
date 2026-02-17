@@ -14,6 +14,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #4643 | 6:02 PM | 🔵 | Backtest setup experience reviewed documenting MT5 configuration gotchas and Wine path handling | ~1163 |
+| #4642 | " | 🔵 | Experience file reviewed documenting AdvancedEA v1.00 compilation history and catastrophic backtest failure | ~344 |
 | #4575 | 5:21 PM | 🔵 | AdvancedEA v1.00 Compilation Issues and Catastrophic Backtest Failure | ~781 |
 | #4507 | 3:35 PM | 🔵 | MT5 Backtest Setup Gotchas Documented | ~499 |
 | #4432 | 1:36 PM | ✅ | Iteration 0 analysis and infrastructure improvements committed | ~641 |

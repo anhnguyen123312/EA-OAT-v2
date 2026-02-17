@@ -7,6 +7,11 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #4650 | 6:05 PM | 🔵 | HasTriggerCandle implementation reviewed showing ATR-based body validation with lookback loop | ~168 |
+| #4648 | " | ✅ | ZoneTolerance input parameter added to AdvancedEA for Priority 1 pullback detection | ~430 |
+| #4647 | " | 🔵 | Trade execution and OnTester sections reviewed showing correct directional mapping but incomplete CSV export | ~1101 |
+| #4645 | 6:04 PM | 🔵 | Entry timing bug location confirmed at lines 1064-1082 showing immediate entry without pullback check | ~1049 |
+| #4644 | 6:03 PM | 🔵 | AdvancedEA v1.00 source code opened showing SMC-based architecture with 5 detectors and configurable scoring | ~297 |
 | #4432 | 1:36 PM | ✅ | Iteration 0 analysis and infrastructure improvements committed | ~641 |
 | #4431 | 1:35 PM | 🟣 | Automated MT5 backtest workflow scripts and manual backtest execution process | ~678 |
 | #4414 | 1:20 PM | 🔴 | Fixed SimpleEA OnTester() to calculate balance metrics from available statistics | ~474 |
