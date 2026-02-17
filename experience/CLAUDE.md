@@ -14,6 +14,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #4575 | 5:21 PM | 🔵 | AdvancedEA v1.00 Compilation Issues and Catastrophic Backtest Failure | ~781 |
 | #4507 | 3:35 PM | 🔵 | MT5 Backtest Setup Gotchas Documented | ~499 |
 | #4432 | 1:36 PM | ✅ | Iteration 0 analysis and infrastructure improvements committed | ~641 |
 | #4431 | 1:35 PM | 🟣 | Automated MT5 backtest workflow scripts and manual backtest execution process | ~678 |

@@ -7,8 +7,5 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #4432 | 1:36 PM | ✅ | Iteration 0 analysis and infrastructure improvements committed | ~641 |
-| #4431 | 1:35 PM | 🟣 | Automated MT5 backtest workflow scripts and manual backtest execution process | ~678 |
-| #4410 | 1:15 PM | 🟣 | MT5 login session backup and restoration system created | ~639 |
-| #4396 | 1:08 PM | 🟣 | Native MT5 backtest launcher script for preserving login sessions | ~598 |
+| #4571 | 5:20 PM | 🔵 | Native MT5 Backtest Launcher Script for macOS | ~602 |
 </claude-mem-context>
