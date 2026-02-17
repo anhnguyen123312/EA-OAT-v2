@@ -14,8 +14,31 @@ MT5 config tricks, .ini gotchas, timing issues.
 - Without `FILE_COMMON`, file goes to local terminal folder (hard to find)
 
 ### ShutdownTerminal
-- Always set `ShutdownTerminal=1` for automated runs
-- MT5 auto-closes after backtest completes
+- `ShutdownTerminal=1` for Wine CLI automated runs (MT5 auto-closes after backtest)
+- `ShutdownTerminal=0` for native macOS app (=1 causes immediate exit before backtest starts)
+
+### Native macOS app vs Wine CLI
+- **Native app** (PREFERRED): `open -a "MetaTrader 5" --args '/config:C:\Program Files\MetaTrader 5\autobacktest.ini'`
+  - Preserves broker login session (Exness)
+  - Must set `ShutdownTerminal=0`
+  - May need manual start via Strategy Tester (Ctrl+R)
+- **Wine CLI**: `/Applications/MetaTrader 5.app/Contents/SharedSupport/wine/bin/wine64 terminal64.exe`
+  - Creates fresh MT5 instance without login
+  - Use `ShutdownTerminal=1` for auto-close
+
+### MetaEditor compilation from CLI
+- Must run from MT5 base directory: `cd "$MT5_BASE"`
+- Must use relative Windows path: `'/compile:MQL5\Experts\SimpleEA.mq5'`
+- Absolute paths or wrong directory → silent failure (no .ex5 produced)
+- Check `MQL5/Experts/SimpleEA.log` for results
+
+### Login credentials backup
+- MT5 login stored in `$MT5_BASE/config/`:
+  - `common.ini` - Login + server
+  - `accounts.dat` - Saved credentials (binary)
+  - `servers.dat` - Server configs (binary)
+- Backup: `config/mt5-backup/` (gitignored)
+- Restore: `scripts/restore_mt5_login.sh`
 
 ### Wine Common/Files path (macOS CrossOver)
 - Wine user is `crossover`, NOT your macOS username

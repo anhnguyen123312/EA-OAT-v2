@@ -8,3 +8,10 @@
 # MT5 compiled files
 *.ex5
 *.ex4
+
+# MT5 sensitive data (credentials, accounts)
+config/mt5-backup/
+
+# Wine artifacts in wrong location
+drive_c/
+MQL5/

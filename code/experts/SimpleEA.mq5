@@ -178,8 +178,18 @@ void OnTick()
 //+------------------------------------------------------------------+
 double OnTester()
 {
-   //--- Collect metrics
+   //--- Balance metrics (what user wants)
+   double initialBalance = TesterStatistics(STAT_INITIAL_DEPOSIT);
    double netProfit      = TesterStatistics(STAT_PROFIT);
+   double balanceDD      = TesterStatistics(STAT_BALANCE_DD);  // Max drawdown amount
+
+   //--- Calculate derived balance values
+   double finalBalance   = initialBalance + netProfit;
+   double minBalance     = initialBalance - balanceDD;  // Min = Initial - Max DD
+   // Max balance = higher of initial and final (simplified - no STAT_BALANCE_MAX available)
+   double maxBalance     = (finalBalance > initialBalance) ? finalBalance : initialBalance;
+
+   //--- Profit metrics
    double grossProfit    = TesterStatistics(STAT_GROSS_PROFIT);
    double grossLoss      = TesterStatistics(STAT_GROSS_LOSS);
    double profitFactor   = TesterStatistics(STAT_PROFIT_FACTOR);
@@ -187,11 +197,12 @@ double OnTester()
    double sharpeRatio    = TesterStatistics(STAT_SHARPE_RATIO);
    double expectedPayoff = TesterStatistics(STAT_EXPECTED_PAYOFF);
 
-   double balanceDD      = TesterStatistics(STAT_BALANCE_DD);
+   //--- Drawdown metrics
    double balanceDDPct   = TesterStatistics(STAT_BALANCE_DDREL_PERCENT);
    double equityDD       = TesterStatistics(STAT_EQUITY_DD);
    double equityDDPct    = TesterStatistics(STAT_EQUITY_DDREL_PERCENT);
 
+   //--- Trade metrics
    double totalTrades    = TesterStatistics(STAT_TRADES);
    double totalDeals     = TesterStatistics(STAT_DEALS);
    double profitTrades   = TesterStatistics(STAT_PROFIT_TRADES);
@@ -204,6 +215,7 @@ double OnTester()
 
    //--- Calculate derived metrics
    double winRate = (totalTrades > 0) ? (profitTrades / totalTrades * 100.0) : 0;
+   double lossRate = (totalTrades > 0) ? (lossTrades / totalTrades * 100.0) : 0;
 
    //--- Export to CSV with FILE_COMMON flag
    string filename = "backtest_results.csv";
@@ -211,26 +223,47 @@ double OnTester()
    if(handle != INVALID_HANDLE)
    {
       FileWrite(handle, "Metric", "Value");
+
+      //--- BALANCE METRICS (priority - what user wants)
+      FileWrite(handle, "=== BALANCE ===", "");
+      FileWrite(handle, "Initial Balance", DoubleToString(initialBalance, 2));
+      FileWrite(handle, "Final Balance", DoubleToString(finalBalance, 2));
+      FileWrite(handle, "Max Balance", DoubleToString(maxBalance, 2));
+      FileWrite(handle, "Min Balance", DoubleToString(minBalance, 2));
       FileWrite(handle, "Net Profit", DoubleToString(netProfit, 2));
+
+      //--- TRADE METRICS (priority - what user wants)
+      FileWrite(handle, "=== TRADES ===", "");
+      FileWrite(handle, "Total Trades", DoubleToString(totalTrades, 0));
+      FileWrite(handle, "Win Trades", DoubleToString(profitTrades, 0));
+      FileWrite(handle, "Loss Trades", DoubleToString(lossTrades, 0));
+      FileWrite(handle, "Win Rate %", DoubleToString(winRate, 2));
+      FileWrite(handle, "Loss Rate %", DoubleToString(lossRate, 2));
+
+      //--- PROFIT METRICS
+      FileWrite(handle, "=== PROFIT ===", "");
       FileWrite(handle, "Gross Profit", DoubleToString(grossProfit, 2));
       FileWrite(handle, "Gross Loss", DoubleToString(grossLoss, 2));
       FileWrite(handle, "Profit Factor", DoubleToString(profitFactor, 2));
       FileWrite(handle, "Recovery Factor", DoubleToString(recoveryFactor, 2));
       FileWrite(handle, "Sharpe Ratio", DoubleToString(sharpeRatio, 2));
       FileWrite(handle, "Expected Payoff", DoubleToString(expectedPayoff, 2));
+
+      //--- DRAWDOWN METRICS
+      FileWrite(handle, "=== DRAWDOWN ===", "");
       FileWrite(handle, "Balance DD", DoubleToString(balanceDD, 2));
       FileWrite(handle, "Balance DD %", DoubleToString(balanceDDPct, 2));
       FileWrite(handle, "Equity DD", DoubleToString(equityDD, 2));
       FileWrite(handle, "Equity DD %", DoubleToString(equityDDPct, 2));
-      FileWrite(handle, "Total Trades", DoubleToString(totalTrades, 0));
+
+      //--- ADDITIONAL METRICS
+      FileWrite(handle, "=== DETAILS ===", "");
       FileWrite(handle, "Total Deals", DoubleToString(totalDeals, 0));
-      FileWrite(handle, "Profit Trades", DoubleToString(profitTrades, 0));
-      FileWrite(handle, "Loss Trades", DoubleToString(lossTrades, 0));
-      FileWrite(handle, "Win Rate %", DoubleToString(winRate, 2));
       FileWrite(handle, "Long Trades", DoubleToString(longTrades, 0));
       FileWrite(handle, "Short Trades", DoubleToString(shortTrades, 0));
       FileWrite(handle, "Max Consecutive Wins", DoubleToString(maxConWins, 0));
       FileWrite(handle, "Max Consecutive Losses", DoubleToString(maxConLosses, 0));
+
       FileClose(handle);
       Print("CSV exported to Common/Files/", filename);
    }
