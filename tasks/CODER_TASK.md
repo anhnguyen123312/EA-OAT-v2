@@ -1,6 +1,6 @@
 # CODER_TASK - Simple EA (Workflow Validation)
 
-## Status: PENDING
+## Status: DONE
 
 ## Task Type: NEW_EA
 
