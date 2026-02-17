@@ -64,22 +64,25 @@
 
 ### Iteration 1: SMC Baseline (First Real Test)
 
-**Date:** TBD  
-**EA:** AdvancedEA (Full EA-OAT SMC)  
-**Strategy:** BOS + Sweep + OB + FVG + Momentum (score ≥ 100)
+**Date:** 2026-02-17
+**EA:** AdvancedEA v1.00
+**Strategy:** BOS + Sweep + OB + FVG + MTF Bias (score ≥ 100)
 
-**Expected:**
-- Win Rate: 70-80% (typical SMC without optimization)
-- Trades/Day: 15-20 (M5 should generate signals)
-- RR: 1.5-2.0 (structure-based TP)
-- DD: Unknown
+**Actual Results:**
+- Win Rate: 19.80% ❌ (Expected: 70-80%, Gap: -50-60%)
+- Trades/Day: 0.18 ❌ (Expected: 15-20, Gap: -14.82-19.82)
+- RR: 1.85 🟡 (Expected: 1.5-2.0, CLOSE)
+- DD: 100.18% ❌ (Account blown)
+- Net Profit: -$1,001.90 ❌
 
-**Analysis Focus:**
-- Which patterns have highest WR? (BOS+OB vs Sweep+FVG, etc.)
-- Which patterns fail most? (counter-trend? weak OB?)
-- Frequency distribution by score range (100-149 vs 150-199 vs 200+)
+**Root Cause:** SIGNAL DIRECTION INVERSION (90% confidence)
+- Detectors working but BUY/SELL mapping backwards
+- Long/Short balanced 50/50 (no bias bug)
+- R:R close to target (suggests SL/TP logic correct)
 
-**Status:** ⏳ Pending Iteration 0 completion
+**Decision:** ITERATE → v1.01 (bug fix release)
+
+**Status:** ❌ FAILED - Critical bugs identified, fix in progress
 
 ---
 
