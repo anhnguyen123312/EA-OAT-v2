@@ -1,0 +1,263 @@
+# EA-OAT-v2 Enhanced Multi-Agent Configuration
+# Inspired by TradingAgents framework
+
+# LLM Provider Settings
+llm:
+  provider: "anthropic"  # Options: anthropic, openai, google
+  deep_think_model: "claude-opus-4-6"      # Complex analysis, strategic decisions
+  standard_model: "claude-sonnet-4-5"      # Standard implementation, reviews
+  quick_model: "claude-haiku-4-5"          # Quick tasks, memory retrieval
+
+# Agent-Specific Model Assignments
+agents:
+  # Phase 1: Research & Analysis
+  market_context_analyst:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 1
+
+  news_analyst:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 1
+
+  sentiment_analyst:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 1
+
+  researcher:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 2
+
+  # Phase 2: Strategy Debate
+  bull_researcher:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 3
+
+  bear_researcher:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 3
+
+  # Phase 3: Planning & Risk
+  pm:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 4
+
+  risk_analyst:
+    enabled: true
+    model: "claude-opus-4-6"  # Use Opus for critical risk decisions
+    priority: 5
+
+  # Phase 4: Quality Gate
+  technical_analyst:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 6
+
+  reviewer:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 7
+
+  # Phase 5: Implementation
+  coder:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 8
+
+  backtester:
+    enabled: true
+    model: "claude-sonnet-4-5"
+    priority: 9
+
+  # Coordinator
+  em:
+    enabled: true
+    model: "claude-opus-4-6"  # Use Opus for strategic coordination
+    priority: 0
+
+  # Utility
+  memory_manager:
+    enabled: true
+    model: "claude-haiku-4-5"  # Fast retrieval
+    priority: -1
+
+# Debate Configuration
+debate:
+  enabled: true
+  max_rounds: 2  # Bull vs Bear debate rounds
+  synthesis_model: "claude-opus-4-6"  # Use Opus for synthesis
+  require_consensus: false  # If true, debate continues until consensus
+
+# Risk Management
+risk:
+  max_acceptable_dd: 10.0  # percent
+  min_win_rate: 90.0       # percent
+  min_risk_reward: 2.0     # ratio
+  min_trades_per_day: 10
+  circuit_breaker:
+    daily_dd_limit: 5.0    # percent - halt trading if daily DD hits this
+    enabled: true
+
+# Memory System
+memory:
+  enabled: true
+  embedding_model: "text-embedding-3-small"  # OpenAI embedding model
+  storage: "chromadb"  # Options: chromadb, sqlite
+  db_path: "data/embeddings/memory_index.db"
+  retrieval_count: 3  # Top N results to return
+  similarity_threshold: 0.7  # Minimum similarity score
+  auto_index: true  # Auto-index new files in brain/ and experience/
+
+# Market Data Sources
+data_sources:
+  symbols:
+    gold: "XAUUSD"
+    oil: "CL"
+
+  dxy:
+    enabled: true
+    symbol: "DXY"
+    correlation_window: 30  # days
+
+  cot_reports:
+    enabled: true
+    update_frequency: "weekly"  # COT released Fridays
+
+  news_feeds:
+    enabled: true
+    sources:
+      - "forex_factory"
+      - "investing_com"
+      - "tradingeconomics"
+
+  economic_calendar:
+    enabled: true
+    tier1_events:  # Extreme impact
+      - "FOMC"
+      - "NFP"
+      - "CPI"
+      - "GDP"
+    tier2_events:  # High impact
+      - "Unemployment"
+      - "Retail Sales"
+      - "PPI"
+      - "Fed Speeches"
+
+# Session Configuration (UTC)
+sessions:
+  asian:
+    start: "00:00"
+    end: "08:00"
+    trade: false  # Avoid Asian session for Gold
+
+  london:
+    start: "08:00"
+    end: "12:00"
+    trade: true
+
+  overlap:  # London-NY overlap
+    start: "12:00"
+    end: "16:00"
+    trade: true
+
+  ny:
+    start: "16:00"
+    end: "21:00"
+    trade: false  # Optional, can be enabled
+
+  late_ny:
+    start: "21:00"
+    end: "00:00"
+    trade: false  # Avoid low liquidity
+
+# Event Filters
+events:
+  pause_before_tier1: 30  # minutes
+  pause_after_tier1: 60   # minutes
+  pause_before_tier2: 15  # minutes
+  pause_after_tier2: 30   # minutes
+
+# Workflow Configuration
+workflow:
+  mode: "enhanced"  # Options: simple, enhanced
+
+  # Simple mode: Original 7-agent pipeline
+  # Enhanced mode: New 14-agent pipeline with debate + risk analysis
+
+  phases:
+    # Enhanced mode phases
+    phase1_research:
+      agents:
+        - market_context_analyst
+        - news_analyst
+        - sentiment_analyst
+        - researcher
+      parallel: true  # Run context analysts in parallel
+
+    phase2_debate:
+      agents:
+        - bull_researcher
+        - bear_researcher
+      max_rounds: 2
+
+    phase3_planning:
+      agents:
+        - pm
+        - risk_analyst
+      sequential: true
+
+    phase4_quality_gate:
+      agents:
+        - technical_analyst
+        - reviewer
+      sequential: true
+
+    phase5_implementation:
+      agents:
+        - coder
+        - backtester
+      sequential: true
+
+# Iteration Settings
+iteration:
+  max_iterations: 10  # Max iterations per strategy before pivot
+  pivot_threshold: 3  # Pivot if no improvement after N iterations
+  success_criteria:
+    win_rate: 90.0
+    risk_reward: 2.0
+    trades_per_day: 10
+    max_drawdown: 10.0
+
+# Logging & Debugging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARN, ERROR
+  save_transcripts: true  # Save debate transcripts
+  save_context_reports: true  # Save market/news/sentiment reports
+
+# Git Configuration
+git:
+  auto_commit: true  # Auto-commit after each agent completes
+  commit_prefix: "[Agent]"  # Prefix for commit messages
+
+# Telegram Notifications (optional)
+telegram:
+  enabled: false
+  bot_token: ""
+  chat_id: ""
+  notify_on:
+    - iteration_complete
+    - targets_met
+    - risk_alert
+    - debate_summary
+
+# Cost Optimization
+cost:
+  use_haiku_for_retrieval: true  # Use Haiku for memory queries
+  use_opus_sparingly: true  # Only for Em, Risk, Synthesis
+  cache_context_reports: true  # Reuse within same iteration
