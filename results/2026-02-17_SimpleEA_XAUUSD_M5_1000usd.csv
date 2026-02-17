@@ -1,0 +1,31 @@
+﻿Metric,Value
+=== BALANCE ===,
+Initial Balance,1000.00
+Final Balance,181.30
+Max Balance,1000.00
+Min Balance,179.65
+Net Profit,-818.70
+=== TRADES ===,
+Total Trades,1322
+Win Trades,322
+Loss Trades,1000
+Win Rate %,24.36
+Loss Rate %,75.64
+=== PROFIT ===,
+Gross Profit,644.00
+Gross Loss,-1462.70
+Profit Factor,0.44
+Recovery Factor,-1.00
+Sharpe Ratio,-5.00
+Expected Payoff,-0.62
+=== DRAWDOWN ===,
+Balance DD,820.35
+Balance DD %,81.90
+Equity DD,820.43
+Equity DD %,81.90
+=== DETAILS ===,
+Total Deals,2644
+Long Trades,658
+Short Trades,664
+Max Consecutive Wins,12
+Max Consecutive Losses,-36
