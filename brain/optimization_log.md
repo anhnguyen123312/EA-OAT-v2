@@ -104,46 +104,77 @@ All pipeline steps work:
 
 **VERDICT:** 🔴 ALL 4 TARGETS MISSED - Account completely wiped out
 
-### Root Cause Analysis
+### Root Cause Analysis (Updated After Code Review)
 
-**PRIMARY CAUSE: SIGNAL DIRECTION INVERSION (90% Confidence)**
+**PRIMARY CAUSE: ENTRY TIMING BUG (95% Confidence)**
 
-**Evidence:**
-1. **Win Rate = 19.8%** = 80.2% loss rate (statistically too consistent for random poor strategy)
-2. **Long/Short Balance = 50/50** (98 longs vs 99 shorts) → No directional bias bug
-3. **R:R = 1.85** (close to target 2.0) → SL/TP placement logic is roughly correct
-4. **Mathematical Proof:** If signals flipped: 158 losses → 158 wins = **79.2% WR** ✅ TARGET MET
+**Backtester's Deep Code Analysis Findings:**
 
-**Hypothesis:** BUY/SELL mapping inverted in code
-- Bullish BOS → triggers SELL (should be BUY)
-- Bearish BOS → triggers BUY (should be SELL)
-- OR: POI zones inverted (buying at resistance, selling at support)
+**✅ Code Sections That Are CORRECT:**
+1. **BOS Detection (Lines 382-436):**
+   - Bullish BOS → `direction = 1` ✅
+   - Bearish BOS → `direction = -1` ✅
+2. **Trade Execution (Lines 1353-1359):**
+   - `direction == 1` → `trade.Buy()` ✅
+   - `direction == -1` → `trade.Sell()` ✅
+3. **SL/TP Placement (Lines 1064-1104):**
+   - LONG: SL below entry, TP above entry ✅
+   - SHORT: SL above entry, TP below entry ✅
+   - R:R = 2:1 for both ✅
+
+**🔴 The ACTUAL Bug: Premature Entry (Lines 1064-1082)**
+
+The code enters **AT** the Order Block instead of **FROM** the Order Block after a pullback:
+
+```cpp
+// Current (BROKEN) Flow:
+1. Detect Bullish BOS → Immediately build candidate
+2. Set entryPrice = ob_bull.priceBottom (the OB level)
+3. Place market order at current ASK price
+4. Price hasn't pulled back to OB yet → entering too early/late
+5. Pullback stops us out → then rallies without us
+```
+
+**Example Scenario:**
+1. Bullish BOS detected at 2050.00 (breaks swing high)
+2. Order Block identified at 2045.00 (support zone)
+3. **Bug:** Code immediately enters LONG at current price (2050.00+)
+4. Price pulls back to 2045.00 → hits our SL
+5. Then price rallies from 2045.00 (the correct entry we just missed)
+
+**Why This Explains 19.8% WR:**
+- 80% losses = entering at wrong timing (late/early)
+- Pullback stops us out on what should have been the entry
+- R:R still ~1.85 because distance calculations are correct
+- 50/50 long/short because directional bias detection works
 
 **SECONDARY CAUSES:**
 
-2. **Risk Management Failure (80% Confidence)**
+2. **Risk Management Bug (80% Confidence)**
    - Account blown (100.18% DD) despite 0.5% risk/trade setting
-   - **Impossible** with proper stop loss execution
-   - Bug: Lot sizing OR SL not being set correctly
+   - Could be lot sizing OR SL not being honored
+   - Needs investigation in v1.01
 
 3. **Low Trade Frequency (30% Confidence)**
-   - 0.18 trades/day vs 10/day target (-98.2% miss)
-   - May improve after bug fixes OR may need strategy relaxation
+   - 0.18 trades/day vs 10/day target
+   - May be acceptable given strict confluence requirements
+   - Re-evaluate after timing fix
 
-4. **Data Export Incomplete**
+4. **Missing Trade Export**
    - OnTester() only exports aggregate metrics
-   - Missing individual trade history (blocks detailed classification)
+   - Need individual trade history for detailed analysis
 
 ### Projected Impact (After Fixes)
 
-| Metric | Current | After Signal Fix | After Risk Fix | Target | Projected Status |
+| Metric | Current | After Timing Fix | After Risk Fix | Target | Projected Status |
 |--------|---------|------------------|----------------|--------|------------------|
-| Win Rate | 19.8% | **~80%** | ~80% | 80% | ✅ PASS |
+| Win Rate | 19.8% | **60-70%** | 60-70% | 80% | 🟡 IMPROVED (not target) |
 | Risk:Reward | 1.85 | 1.85 | 1.85 | 2.0 | 🟡 CLOSE |
 | Trades/Day | 0.18 | 0.18 | 0.18 | 10 | ❌ NEEDS WORK |
 | Max DD | 100.18% | ~100% | **<10%** | <10% | ✅ AFTER FIX |
 
-**Confidence:** HIGH (90%) that signal inversion is root cause
+**Confidence:** HIGH (95%) that entry timing is root cause
+**Expected WR:** 60-70% (not 80%) because some pullbacks will fail (genuine reversals)
 
 ### Decision
 
@@ -161,26 +192,49 @@ All pipeline steps work:
 
 ### Fixes Required for v1.01
 
-**PRIORITY 1: Fix Signal Direction (CRITICAL)**
-- File: `code/experts/AdvancedEA.mq5`
-- Location: Detector direction assignment AND trade execution mapping
-- Fix: Review `candidate.direction` logic and `trade.Buy/Sell` mapping
-- Expected Impact: **WR: 19.8% → ~80%**
+**PRIORITY 1: Fix Entry Timing Logic (CRITICAL)**
+- **File:** `code/experts/AdvancedEA.mq5` (Lines 1064-1082)
+- **Current Bug:** Enters immediately when BOS+OB detected, before pullback
+- **Fix Required:**
+  1. Add pullback detection - check if current price is NEAR the OB/FVG zone
+  2. Add zone tolerance parameter (e.g., 0.05% of price)
+  3. Add confirmation candle requirement at the zone
+  4. Wait for price to reach POI before entry
+- **Implementation:**
+  ```cpp
+  // Check if current price is AT the OB zone (within tolerance)
+  double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+  double obZone = ob_bull.priceBottom;
+  double tolerance = 0.0005 * currentPrice;  // 0.05% tolerance
+
+  if(MathAbs(currentPrice - obZone) <= tolerance) {
+      // NOW at OB zone - check for confirmation candle
+      if(ConfirmationCandlePresent()) {
+          candidate.entryPrice = currentPrice;
+          // Enter here
+      }
+  } else {
+      // Price not at OB yet - don't enter!
+      return;  // Skip this tick
+  }
+  ```
+- **Expected Impact:** **WR: 19.8% → 60-70%**
 
 **PRIORITY 2: Fix Risk Management (CRITICAL)**
-- Check: Lot size calculation in `g_riskMgr.CalculateLotSize()`
-- Check: SL actually being set in `trade.Buy/Sell` calls
-- Check: Decimal point errors (0.5% vs 0.005)
-- Expected Impact: **DD: 100% → <10%**
+- **Check:** Lot size calculation in `g_riskMgr.CalculateLotSize()`
+- **Check:** SL actually being set in `trade.Buy/Sell` calls
+- **Check:** Decimal point errors (0.5% vs 0.005)
+- **Expected Impact:** **DD: 100% → <10%**
 
-**PRIORITY 3: Add Individual Trade Export (Technical Debt)**
-- Add `HistoryDealsTotal()` loop to OnTester()
-- Export: ticket, type, open_time, close_time, prices, sl, tp, profit, comment
-- Expected Impact: Enable detailed trade classification in v1.02+
+**PRIORITY 3: Add Individual Trade Export (HIGH)**
+- **Add:** `HistoryDealsTotal()` loop to OnTester()
+- **Export:** ticket, type, open_time, close_time, prices, sl, tp, profit, comment
+- **Format:** CSV file `trade_history.csv` to Common/Files
+- **Expected Impact:** Enable detailed trade classification in v1.02+
 
-**PRIORITY 4: Investigate Deposit Discrepancy**
-- Config shows: $10,000
-- CSV shows: $1,000
-- Question: Which was actually used?
+**PRIORITY 4: Fix Config Deposit Discrepancy (MEDIUM)**
+- **Issue:** Config shows $10,000, CSV shows $1,000
+- **Action:** Verify which was actually used, update config to $1,000 for consistency
+- **Impact:** Ensure apples-to-apples comparison across iterations
 
 ---
